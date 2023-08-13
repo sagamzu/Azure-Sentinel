@@ -1,11 +1,12 @@
 {
-    "SolutionName":"Test script solution",
+    "SolutionName":"solution name",
     "SolutionAuthor": "author Mock",
     "SolutionVersion":"2.0.0",
-    "PackageId": "azuresentinel.azure-sentinel-solution-testSari",
-    "TemplateName": "SariTemplateName",
+    "PackageId": "azuresentinel.azure-sentinel-solution-name",
+    "TemplateName": "name",
     "ConnectorDefinitionTemplateVersion": "1.0.0",
     "DataConnectorsTemplateVersion": "1.0.0",
-    "PackageIcon":"icon icon icon icon"
+    "PackageIcon":"icon icon icon icon",
+    "SolutionTier": "Microsoft"
 
 }

@@ -15,6 +15,7 @@ function Get-MetaDataBaseResource($resourceName, $parentId, $contentId, $kind, $
         };
         support = [PSCustomObject]@{
             name = "[variables('_solutionAuthor')]";
+            tier = "[variables('_solutionTier')]";
         };
     }
 
@@ -29,13 +30,13 @@ function Get-MetaDataBaseResource($resourceName, $parentId, $contentId, $kind, $
 function Get-MetaDataResource($TemplateCounter){
     if($templateContentTypeByCounter[$TemplateCounter] -eq "DataConnector")
     {
-        $parentIdResourceName = "Microsoft.SecurityInsights/dataConnectorDefinitions"
+        $parentIdResourceName = "'Microsoft.SecurityInsights/dataConnectorDefinitions'"
     }
     else {
-        $parentIdResourceName = "Microsoft.SecurityInsights/dataConnectors"
+        $parentIdResourceName = "'Microsoft.SecurityInsights/dataConnectors'"
     }
 
-    $parentId = "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspace')), $parentIdResourceName, variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])')]"
+    $parentId = "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspace')), $parentIdResourceName, variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])'))]"
     $metaDataResourceName = "concat('DataConnector-', variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])'))"
     $metaDataContentId = "[variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])')]"
     $metaDatsContentVersion  = "[variables('dataConnectorVersion$($templateKindByCounter[$TemplateCounter])')]"
@@ -48,7 +49,7 @@ function Get-MetaDataResource($TemplateCounter){
                     [PSCustomObject]@{
                         "version" = "[variables('dataConnectorVersion$($templateKindByCounter[2])')]";
                         "contentId" = "[variables('_dataConnectorContentId$($templateKindByCounter[2])')]";
-                        "kind" = "DataConnector"
+                        "kind" = "ResourcesDataConnector"
                     }
                 )
             }

@@ -1,6 +1,6 @@
-. "C:\Users\sagamzu\Downloads\V3-dataConnectors\V3-dataConnectors\functions\Format-Json.ps1"
-. "C:\Users\sagamzu\Downloads\V3-dataConnectors\V3-dataConnectors\functions\Get-ConnectionsTemplateParameters.ps1"
-. "C:\Users\sagamzu\Downloads\V3-dataConnectors\V3-dataConnectors\functions\Get-MetaDataResource.ps1"
+. "functions\Format-Json.ps1"
+. "functions\Get-ConnectionsTemplateParameters.ps1"
+. "functions\Get-MetaDataResource.ps1"
 
 [hashtable]$templateKindByCounter = @{
     1 = "ConnectorDefinition"; 
@@ -14,18 +14,28 @@
 
 function Get-ContentTemplateResource($templateName, $TemplateCounter){
     $contentVersion = "variables('dataConnectorVersion$($templateKindByCounter[$TemplateCounter])')";
+    $contentTemplateName = "variables('dataConnectorTemplateName$($templateKindByCounter[$TemplateCounter])')";
+    $contentId = "variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])')";
+    $resoureKind = $templateContentTypeByCounter[$TemplateCounter];
+    if($resoureKind -eq "DataConnector")
+    {
+        $resoureKindTag = "dc";
+    }
+    else {
+        $resoureKindTag = "rdc";
+    }
 
     return [PSCustomObject]@{
         type       = "Microsoft.OperationalInsights/workspaces/providers/contentTemplates";
         apiVersion = "2023-04-01-preview";
-        name        = "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/', variables('dataConnectorTemplateName$($templateKindByCounter[$TemplateCounter])'),$contentVersion)]";
+        name        = "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/', $contentTemplateName, $contentVersion)]";
         location   = "[parameters('workspace-location')]";
         dependsOn  = @(
             "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspace')), 'Microsoft.SecurityInsights/contentPackages', variables('_solutionId'))]"
         );
         properties = [PSCustomObject]@{
-            contentId  =  "[variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])')]";
-            displayName = "[concat(variables('_solutionName'), variables('dataConnectorTemplateName$($templateKindByCounter[$TemplateCounter])'))]";
+            contentId  =  "[$contentId]";
+            displayName = "[concat(variables('_solutionName'), $contentTemplateName)]";
             contentKind = $templateContentTypeByCounter[$TemplateCounter];
             mainTemplate = [PSCustomObject]@{
                 '$schema'      = "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#";
@@ -38,8 +48,10 @@ function Get-ContentTemplateResource($templateName, $TemplateCounter){
             packageKind = "Solution";
             packageVersion = "[variables('_solutionVersion')]";
             packageName = "[variables('_solutionName')]";
+            contentProductId = "[concat(substring(variables('_solutionId'), 0, 50),'-','$resoureKindTag','-', uniqueString(concat(variables('_solutionId'),'-','$resoureKind','-',$contentId,'-', $contentVersion)))]";
             packageId = "[variables('_solutionId')]";
             contentSchemaVersion = "3.0.0";
+            version = "[variables('_solutionVersion')]";
         }
     }
 }
@@ -48,7 +60,7 @@ function Get-ArmResource($name, $type, $kind, $properties){
     [hashtable]$apiVersion = @{
         "Microsoft.SecurityInsights/dataConnectors" = "2022-12-01-preview";
         "Microsoft.SecurityInsights/dataConnectorDefinitions" = "2022-09-01-preview";
-        "Microsoft.OperationalInsights/workspaces" = "2021-03-01-privatepreview";
+        "Microsoft.OperationalInsights/workspaces/tables" = "2021-03-01-privatepreview";
         "Microsoft.Insights/dataCollectionRules" = "2021-09-01-preview";
     }
 
@@ -83,12 +95,14 @@ $baseMainTemplate.variables | Add-Member -NotePropertyName "_packageIcon" -NoteP
 $baseMainTemplate.variables | Add-Member -NotePropertyName "_solutionId" -NotePropertyValue "azuresentinel.azure-sentinel-solution-$($solutionMetadata.PackageId)"
 $baseMainTemplate.variables | Add-Member -NotePropertyName "dataConnectorVersion$($templateKindByCounter[1])" -NotePropertyValue $solutionMetadata.ConnectorDefinitionTemplateVersion
 $baseMainTemplate.variables | Add-Member -NotePropertyName "dataConnectorVersion$($templateKindByCounter[2])" -NotePropertyValue $solutionMetadata.DataConnectorsTemplateVersion
+$baseMainTemplate.variables | Add-Member -NotePropertyName "_solutionTier" -NotePropertyValue $solutionMetadata.SolutionTier
 
 # create the base Templates.
 # One for connector definition (dataConnectorDefinition, DCR, table) and one for the connections (dataConnectors)
 $activeResource =  @()
 For ($TemplateCounter = 1; $TemplateCounter -lt 3; $TemplateCounter++) {
 
+    $templateName = $solutionMetadata.TemplateName;
     $baseMainTemplate.variables | Add-Member -NotePropertyName "_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])" -NotePropertyValue "$templateName$($templateKindByCounter[$TemplateCounter])"
     $baseMainTemplate.variables | Add-Member -NotePropertyName "dataConnectorTemplateName$($templateKindByCounter[$TemplateCounter])" -NotePropertyValue "[concat(parameters('workspace'),'-dc-',uniquestring(variables('_dataConnectorContentId$($templateKindByCounter[$TemplateCounter])')))]"
     
@@ -142,8 +156,8 @@ foreach ($file in $(Get-ChildItem $inputFilesPath)) {
     }
     elseif($fileContent.type -eq "Microsoft.OperationalInsights/workspaces/tables")
     {
-        $baseMainTemplate.variables | Add-Member -NotePropertyName "_logAnalyticsTableId$tableCounter" -NotePropertyValue $resourceName
-        $resourceName = "[concat(parameters('workspace'),'/', variables('_logAnalyticsTableId$tableCounter'))]"
+        $baseMainTemplate.variables | Add-Member -NotePropertyName "_logAnalyticsTableId$tableCounter" -NotePropertyValue $fileContent.name
+        $resourceName = "[variables('_logAnalyticsTableId$tableCounter')]"
         $fileContent.properties.schema.name = "[variables('_logAnalyticsTableId$tableCounter')]"
         $armResource = Get-ArmResource $resourceName $fileContent.type $fileContent.kind $fileContent.properties
         $templateContentConnectorDefinition.properties.mainTemplate.resources += $armResource
@@ -152,10 +166,17 @@ foreach ($file in $(Get-ChildItem $inputFilesPath)) {
     elseif($fileContent.type -eq "Microsoft.SecurityInsights/dataConnectors") {
         $resourceName = "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/', '$name')]"
         $armResource = Get-ArmResource $resourceName $fileContent.type $fileContent.kind $fileContent.properties
+        $armResource.type = "Microsoft.OperationalInsights/workspaces/providers/dataConnectors"
         $armResource.properties.connectorDefinitionName = "[[parameters('connectorDefinitionName')]"
         $armResource.properties.dcrConfig.dataCollectionEndpoint = "[[parameters('dcrConfig').dataCollectionEndpoint]"
         $armResource.properties.dcrConfig.dataCollectionRuleImmutableId = "[[parameters('dcrConfig').dataCollectionRuleImmutableId]"
         
+        if($armResource.properties.auth.type -eq 'OAuth2')
+        {
+            $armResource.properties.auth.ClientId = "[[parameters('ClientId')]"
+            $armResource.properties.auth.ClientSecret = "[[parameters('ClientSecret')]"
+            $armResource.properties.auth.AuthorizationCode = "[[parameters('AuthorizationCode')]"
+        }
         $templateContentConnections.properties.mainTemplate.resources += $armResource
     } 
 }
@@ -172,7 +193,7 @@ $baseMainTemplate.resources += $armResourceContentPackage
 try {
     $jsonConversionDepth = 50
     $mainTemplateOutputPath = "$PSScriptRoot/mainTemplate.json"
-    ($baseMainTemplate | ConvertTo-Json -Depth $jsonConversionDepth).Replace('\n','\\n').Replace('\r','\\r').Replace('\"','\\"')  | % { [System.Text.RegularExpressions.Regex]::Unescape($_) } | Format-Json | Out-File $mainTemplateOutputPath -Encoding utf8
+    ($baseMainTemplate | ConvertTo-Json -Depth $jsonConversionDepth).Replace('\n','\\n').Replace('\r','\\r').Replace('\t','\\t').Replace('\"','\\"')  | % { [System.Text.RegularExpressions.Regex]::Unescape($_) } | Format-Json | Out-File $mainTemplateOutputPath -Encoding utf8
 }
 catch {
     Write-Host "Failed to write output file $mainTemplateOutputPath" -ForegroundColor Red

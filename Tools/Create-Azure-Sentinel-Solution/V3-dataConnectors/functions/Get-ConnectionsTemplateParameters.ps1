@@ -38,6 +38,17 @@ function Get-ConnectionsTemplateParameters($activeResource){
                 }
                 $templateParameter | Add-Member -MemberType NoteProperty -Name $instruction.parameters.name -Value $newParameter
             }
+            elseif($instruction.type -eq "OAuthForm")
+            {
+                $newParameter = [PSCustomObject]@{
+                    defaultValue = "-NA-";
+                    type = "string";
+                    minLength = 1;
+                }
+                $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientId" -Value $newParameter
+                $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientSecret" -Value $newParameter
+                $templateParameter | Add-Member -MemberType NoteProperty -Name "AuthorizationCode" -Value $newParameter
+            }
             
         }
     }

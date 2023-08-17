@@ -28,30 +28,40 @@ function Get-ConnectionsTemplateParameters($activeResource){
 
     $connectorDefinitionObject =  $activeResource | where-object -Property "type" -eq 'Microsoft.OperationalInsights/workspaces/providers/dataConnectorDefinitions'
     foreach ($instructionSteps in $connectorDefinitionObject.properties.connectorUiConfig.instructionSteps) {
-        foreach ($instruction in $instructionSteps.instructions){
-            if($instruction.type -eq "Textbox")
-            {
-                $newParameter = [PSCustomObject]@{
-                    defaultValue = $instruction.parameters.name;
-                    type = "string";
-                    minLength = 1;
-                }
-                $templateParameter | Add-Member -MemberType NoteProperty -Name $instruction.parameters.name -Value $newParameter
-            }
-            elseif($instruction.type -eq "OAuthForm")
-            {
-                $newParameter = [PSCustomObject]@{
-                    defaultValue = "-NA-";
-                    type = "string";
-                    minLength = 1;
-                }
-                $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientId" -Value $newParameter
-                $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientSecret" -Value $newParameter
-                $templateParameter | Add-Member -MemberType NoteProperty -Name "AuthorizationCode" -Value $newParameter
-            }
-            
-        }
+        New-ParametersForConnectorInstuctions $instructionSteps.instructions   
     }
 
     return $templateParameter;
 }
+
+
+function New-ParametersForConnectorInstuctions($instructions)
+{
+    foreach ($instruction in $instructions){
+        if($instruction.type -eq "Textbox")
+        {
+            $newParameter = [PSCustomObject]@{
+                defaultValue = $instruction.parameters.name;
+                type = "string";
+                minLength = 1;
+            }
+            $templateParameter | Add-Member -MemberType NoteProperty -Name $instruction.parameters.name -Value $newParameter
+        }
+        elseif($instruction.type -eq "OAuthForm")
+        {
+            $newParameter = [PSCustomObject]@{
+                defaultValue = "-NA-";
+                type = "string";
+                minLength = 1;
+            }
+            $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientId" -Value $newParameter
+            $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientSecret" -Value $newParameter
+            $templateParameter | Add-Member -MemberType NoteProperty -Name "AuthorizationCode" -Value $newParameter
+        }
+        elseif($instruction.type -eq "ContextPane")
+        {
+            New-ParametersForConnectorInstuctions $instruction.parameters.instructionSteps.instructions    
+        }
+    }
+}
+

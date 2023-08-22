@@ -140,7 +140,7 @@ foreach ($file in $(Get-ChildItem $inputFilesPath)) {
     }
     elseif($fileContent.type -eq "Microsoft.Insights/dataCollectionRules")
     {
-        if([bool]($fileContent.PSobject.Properties.name -match "dataCollectionEndpointId") -eq $false)
+        if([bool]($fileContent.properties.PSobject.Properties.name -match "dataCollectionEndpointId") -eq $false)
         {
             $dcrEndpoint = "[concat('/subscriptions/',parameters('subscription'),'/resourceGroups/',parameters('resourceGroupName'),'/providers/Microsoft.Insights/dataCollectionEndpoints/',parameters('workspace'))]"
             $fileContent.properties | Add-Member -MemberType NoteProperty -Name dataCollectionEndpointId -Value $dcrEndpoint

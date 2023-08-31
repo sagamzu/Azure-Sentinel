@@ -175,7 +175,11 @@ foreach ($file in $(Get-ChildItem $inputFilesPath)) {
         {
             $armResource.properties.auth.ClientId = "[[parameters('ClientId')]"
             $armResource.properties.auth.ClientSecret = "[[parameters('ClientSecret')]"
-            $armResource.properties.auth.AuthorizationCode = "[[parameters('AuthorizationCode')]"
+
+            if($armResource.properties.auth.grantType -eq 'authorization_code')
+            {
+                $armResource.properties.auth.AuthorizationCode = "[[parameters('AuthorizationCode')]"
+            }   
         }
         $templateContentConnections.properties.mainTemplate.resources += $armResource
     } 

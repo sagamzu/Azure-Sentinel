@@ -51,7 +51,7 @@ function New-ParametersForConnectorInstuctions($instructions)
         {
             $newParameter = [PSCustomObject]@{
                 defaultValue = "-NA-";
-                type = "string";
+                type = "securestring";
                 minLength = 1;
             }
             $templateParameter | Add-Member -MemberType NoteProperty -Name "ClientId" -Value $newParameter
@@ -64,4 +64,3 @@ function New-ParametersForConnectorInstuctions($instructions)
         }
     }
 }
-
